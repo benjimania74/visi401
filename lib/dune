@@ -1,0 +1,9 @@
+(library
+ (name visi)
+ (modules lambda cam lexer parser)
+ (libraries menhirLib))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
