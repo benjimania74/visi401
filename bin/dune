@@ -1,0 +1,8 @@
+(executable
+ (public_name visi)
+ (name main)
+ (libraries visi))
+
+(toplevel
+  (name tt)
+  (libraries visi))
