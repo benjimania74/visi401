@@ -1,17 +1,21 @@
-(*%{ 
+%{ 
 open Lambda
-%}*)
+%}
 
 %token <int> INT
-%token PLUS
+%token LAMBDA "λ"
+%token DOT "."
+%token LPAREN "("
+%token RPAREN ")"
 %token EOF
 
-%start <int> main
+
+%start <term> main
 %%
 
 main:
     expr EOF { $1 }
 
 expr:
-    INT { $1 }
-| expr PLUS expr { $1 + $3 }
+    | x = INT; { Ident x }
+| expr expr { App($1, $2) }

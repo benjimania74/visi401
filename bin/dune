@@ -4,5 +4,5 @@
  (libraries visi))
 
 (toplevel
-  (name tt)
+  (name cam_zam_parser_eval)
   (libraries visi))

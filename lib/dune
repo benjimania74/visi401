@@ -1,7 +1,9 @@
 (library
  (name visi)
  (modules lambda cam lexer parser)
- (libraries menhirLib))
+ (libraries menhirLib ppx_show.runtime)
+ (preprocess
+  (pps ppx_deriving.show)))
 
 (ocamllex lexer)
 
