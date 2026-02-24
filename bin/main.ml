@@ -1,6 +1,6 @@
 open Visi
-open Lexing
-open term
+(* open Lexing *)
+open Lambda
 
 let () =
 let input = "λ0" in
