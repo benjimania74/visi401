@@ -1,5 +1,0 @@
-(executable
-  (name toplevel)
-  (libraries visi)
-  (modules toplevel)
-)
