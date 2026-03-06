@@ -1,15 +1,13 @@
 open Visi
-open Lambda
-open Lexer
-open Parser
+open Cam
 
 let repl () =
   let lexbuf = Lexing.from_channel stdin in
   while true do
     Printf.printf "> %!";
     let result = Parser.main Lexer.read lexbuf in
-    let value = Cam.runCam result in
-    Printf.printf "%s\n%!" (show_valeur value)
+    let value = runCam (compile result) in
+    Printf.printf "%s\n%!" (pp_valeur_option value)
   done
 
 let () = repl ()

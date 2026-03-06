@@ -1,6 +1,7 @@
 open Lambda;;
 
-type instruction = Access of int | MakeClosure of instruction list | Apply | Return;;
+type instruction = Access of int | MakeClosure of instruction list | Apply | Return
+[@@deriving show];;
 
 let rec compile (t: term) = match t with
   | Ident n -> [Access n]
@@ -19,6 +20,17 @@ and
 valeur = Code of instruction list | Env of env | Closure of instruction list * env | Value of int
 [@@deriving show]
 ;;
+
+(* let%show : valeur option -> string = function *)
+(*   | None -> "None" *)
+(*   | Some v -> "Some (" ^ show_valeur v ^ ")" *)
+
+
+let pp_option pp_value = function
+  | None -> "None"
+  | Some v -> "Some (" ^ pp_value v ^ ")"
+
+let pp_valeur_option = pp_option show_valeur
 
 
 type pile = valeur Stack.t;;

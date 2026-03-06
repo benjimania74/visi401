@@ -13,8 +13,10 @@ rule read = parse
     | spaces { read lexbuf }
     | numbers { INT (int_of_string (Lexing.lexeme lexbuf)) } (* "Lexing.lexeme lexbuf" extrait la valeur qui a matché avec le regex de numbers*)
     | "λ." { LAMBDA }
+    | "λ." { LAMBDA }
     | '(' { LPAREN }
     | ')' { RPAREN }
     (* | '.' { DOT } *)
     | eof { EOF }
+    | "\n" { EOF }
     | _ { failwith "Caractère inconnu" }
