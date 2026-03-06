@@ -16,7 +16,10 @@ end;;
 
 type env = valeur list
 and
-valeur = Code of instruction list | Env of env | Closure of instruction list * env | Value of int;;
+valeur = Code of instruction list | Env of env | Closure of instruction list * env | Value of int
+[@@deriving show]
+;;
+
 
 type pile = valeur Stack.t;;
 
