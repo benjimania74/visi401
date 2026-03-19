@@ -24,11 +24,11 @@ main:
 
 element:
     | n=INT; { Ident n }
+    | Z ; { Lambda.Z }
+    | S ; { Lambda.S }
     | LPAREN; a=expr; RPAREN; { a }
 
 expr:
     | e=element; { e }
     | LAMBDA; e=expr; {Lam e}
     | f=expr; a=element; { App(f,a) }
-    | Z ; { Lambda.Z }
-    | S ; { Lambda.S }
