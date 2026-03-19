@@ -16,6 +16,8 @@ rule read = parse
     | "λ." { LAMBDA }
     | '(' { LPAREN }
     | ')' { RPAREN }
+    | "S" { S }
+    | "Z" { Z }
     (* | '.' { DOT } *)
     | eof { EOF }
     | "\n" { EOF }

@@ -1,14 +1,14 @@
 open Lambda;;
 
-type instruction = Access of int | MakeClosure of instruction list | Apply | Return
+type instruction = Access of int | MakeClosure of instruction list | Apply | Return | BLOCK | PUSH0
 [@@deriving show];;
 
 let rec compile (t: term) = match t with
   | Ident n -> [Access n]
   | Lam l -> [MakeClosure (List.append (compile l) [Return]) ]
-  | App (a, b) -> List.flatten [ compile a ; compile b ; [Apply] ];; 
-
-let x = [ MakeClosure[] ; Apply ; Return ; Access(0) ];;
+  | App (a, b) -> List.flatten [ compile a ; compile b ; [Apply] ]
+  | S -> [BLOCK]
+  | Z -> [PUSH0];; 
 
 module Int = struct
   type t = int
@@ -17,7 +17,7 @@ end;;
 
 type env = valeur list
 and
-valeur = Code of instruction list | Env of env | Closure of instruction list * env | Value of int
+valeur = Code of instruction list | Env of env | Closure of instruction list * env | Value of int | MakeVS | VS of valeur | VZ
 [@@deriving show]
 ;;
 
@@ -32,12 +32,17 @@ let rec pp_valeur = function
     | Closure (instrs,env) -> 
        "λ." ^ (pp_instrs instrs) ^ " [ " ^ (pp_env env) ^ " ] "
     | Value n -> string_of_int n
+    | MakeVS -> "S"
+    | VS v -> "S " ^ (pp_valeur v)
+    | VZ -> "Z"
 and pp_instrs instrs = String.concat "; " (List.map pp_instr instrs)
 and pp_instr = function 
   | Access n -> string_of_int n
   | MakeClosure instrs -> "Λ." ^ (pp_instrs instrs)
   | Apply -> "@"
   | Return -> "ret"
+  | BLOCK -> "S"
+  | PUSH0 -> "Z"
 and pp_env env = String.concat ", " (List.map pp_valeur env)
 
 
@@ -64,8 +69,9 @@ let rec cam (code: instruction list) (env: env) (pile: pile): valeur option =
         cam c env pile 
       | Apply :: c ->
         let value = Stack.pop pile in
-        let closure = Stack.pop pile in
-        begin match closure with
+        let value' = Stack.pop pile in
+        
+        begin match value' with
             | Closure (closureCode, closureEnv) ->
                 let _ = Stack.push ( Env(env) ) pile
                 in
@@ -74,6 +80,10 @@ let rec cam (code: instruction list) (env: env) (pile: pile): valeur option =
                 let closureEnv = value :: closureEnv
                 in
                 cam closureCode closureEnv pile
+            | MakeVS ->
+              let _ = Stack.push (VS value) pile
+              in
+              cam c env pile
             | _ -> failwith("Apply invalide")
         end
       | Return :: _ ->
@@ -87,7 +97,16 @@ let rec cam (code: instruction list) (env: env) (pile: pile): valeur option =
               cam code env pile
             | _ ->
               failwith("Return invalide")
-        end;;
+        end
+      | PUSH0 :: c ->
+        let _ = Stack.push VZ pile
+        in
+        cam c env pile
+      | BLOCK :: c ->
+        let _ = Stack.push MakeVS pile
+        in
+        cam c env pile;;
+        
     
 let runCam code = 
   let s = Stack.create() in

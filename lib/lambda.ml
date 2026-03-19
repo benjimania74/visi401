@@ -2,6 +2,7 @@ type term =
   | Ident of int
   | Lam of term 
   | App of term * term
+  | S | Z
   [@@deriving show]
 
 type program = Program of term list

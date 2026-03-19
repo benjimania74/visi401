@@ -10,6 +10,8 @@ open Lambda
 *)
 %token LPAREN "("
 %token RPAREN ")"
+%token Z "Z"
+%token S "S"
 %token EOF
 
 %type <Lambda.term> main 
@@ -28,3 +30,5 @@ expr:
     | e=element; { e }
     | LAMBDA; e=expr; {Lam e}
     | f=expr; a=element; { App(f,a) }
+    | Z ; { Lambda.Z }
+    | S ; { Lambda.S }
