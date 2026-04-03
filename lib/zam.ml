@@ -59,28 +59,27 @@ let pp_valeur_option_zam = pp_option_zam pp_valeur_zam
 
 type pile = valeur Stack.t;;
 
-let rec zam (code: instruction_zam list) (env: env) (aStk: pile) (rStk: pile): valeur option =
+let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) (rStk: pile): valeur option =
   match code with
     | [] ->
       if Stack.is_empty aStk then
         None
       else Some( Stack.pop aStk )
     | Access n :: c ->
-      let _ = Stack.push ( List.nth env n ) aStk in
-      zam c env aStk rStk
+      let accu = List.nth env n in
+      zam c accu env aStk rStk
     | MakeClosure c' :: c ->
-      let _ = Stack.push ( Closure(c', env) ) aStk in
-      zam c env aStk rStk
+      let accu = Closure(c', env) in
+      zam c accu env aStk rStk
     | TailApply :: _ ->
-      let closure = Stack.pop aStk in
-      begin match closure with
-        | Closure(c', e') ->
-          zam c' e' aStk rStk
+      begin match accu with
+      | Closure(c', e') ->
+          let e' = (Stack.pop aStk) :: e' in
+          zam c' accu e' aStk rStk
         | _ -> failwith("TailApply invalide");
       end
     | Apply :: c ->
-      let closure = Stack.pop aStk in
-      begin match closure with
+      begin match accu with
         | Closure(c', e') ->
           let _ = Stack.push ( Env(env) ) rStk in
           let _ = Stack.push ( Code(c) ) rStk in
