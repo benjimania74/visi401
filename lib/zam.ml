@@ -1,7 +1,7 @@
 open Lambda;;
 
 
-type instruction_zam = Access of int | MakeClosure of instruction_zam list | TailApply | Apply | PushMark | MakeGrab | Return;;
+type instruction_zam = Access of int | MakeClosure of instruction_zam list | TailApply | Apply | Push | PushMark | MakeGrab | Return;;
 
 
 let rec split (t: term) (args: term list) = match t with
@@ -48,6 +48,7 @@ and pp_instr_zam = function
   | TailApply -> "t@"
   | PushMark -> "PE"
   | MakeGrab -> "MG"
+  | Push -> "P"
 and pp_env_zam env = String.concat ", " (List.map pp_valeur_zam env)
 
 
@@ -73,7 +74,7 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
                              zam c' accu ((Stack.pop aStk) :: e') aStk rStk
         | _               -> failwith("TailApply invalide");
       end
-    | Apply :: c    ->
+    | Apply :: c          -> 
       begin match accu with
         | Closure(c', e') ->
           let _ = Stack.push ( Env(env) ) rStk in
@@ -82,9 +83,12 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
                               zam c' accu (v :: e') aStk rStk
         | _ -> failwith("Apply invalide");
       end
+    | Push :: c -> 
+      let _ = Stack.push accu aStk in
+                              zam c accu env aStk rStk
     | PushMark :: c ->
       let _ = Stack.push Mark aStk in
-      zam c env aStk rStk
+                              zam c accu env aStk rStk
     | MakeGrab :: c ->
       let aStkVal = Stack.pop aStk
       in
@@ -94,36 +98,31 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
           let e1' = Stack.pop rStk in
           begin match (c1', e1') with
             | Code c', Env e' -> 
-              let _ = Stack.push ( Closure((MakeGrab :: c), env) ) aStk in
-              zam c' e' aStk rStk
-            | _ -> failwith("zam : Pas bon MakeGrab 1")
+                              zam c' (Closure(c, env)) e' aStk rStk
+            | _            -> failwith("zam : Pas bon MakeGrab 1")
           end
         | _ -> 
-          let e = Stack.pop rStk :: env in
-          zam code e aStk rStk
+          zam code accu (Stack.pop aStk :: env) aStk rStk
       end
     | Return :: _ ->
       let v = Stack.pop aStk in
       begin match v with
-      | Closure(c',e') ->
-        zam c' e' aStk rStk
+      | Mark -> 
+        let c1' = Stack.pop rStk in
+        let e1' = Stack.pop rStk in
+        begin match (c1', e1') with
+          | Code c', Env e' -> 
+            zam c' accu e' aStk rStk
+          | _ -> failwith "zam: Pas bon Return 1"
+        end
       | _ ->
-        let v' = Stack.pop aStk in
-        begin match v' with
-          | Mark -> 
-            let c1' = Stack.pop rStk in
-            let e1' = Stack.pop rStk in
-            begin match (c1', e1') with
-              | Code c', Env e' -> 
-                let _ = Stack.push v aStk in
-                zam c' e' aStk rStk
-              | _ -> failwith "zam: Pas bon Return 1"
-            end
-          | _ -> failwith "zam : Pas bon Return 2"
+        begin match accu with
+        | Closure(c',e') ->    zam c' accu (v :: e') aStk rStk
+        | _              ->    failwith "zam: Pas bon return 2"
         end
       end;;
     
 let runZam code = 
   let aS = Stack.create() 
   and rS = Stack.create() in
-  zam code [] aS rS;;
+  zam code (Value 0) [] aS rS;;
