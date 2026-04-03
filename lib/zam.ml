@@ -65,25 +65,21 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
       if Stack.is_empty aStk then
         None
       else Some( Stack.pop aStk )
-    | Access n :: c ->
-      let accu = List.nth env n in
-      zam c accu env aStk rStk
-    | MakeClosure c' :: c ->
-      let accu = Closure(c', env) in
-      zam c accu env aStk rStk
-    | TailApply :: _ ->
+    | Access n :: c       -> zam c (List.nth env n) env aStk rStk
+    | MakeClosure c' :: c -> zam c (Closure(c', env)) env aStk rStk
+    | TailApply :: _      ->
       begin match accu with
-      | Closure(c', e') ->
-          let e' = (Stack.pop aStk) :: e' in
-          zam c' accu e' aStk rStk
-        | _ -> failwith("TailApply invalide");
+      | Closure(c', e')   ->
+                             zam c' accu ((Stack.pop aStk) :: e') aStk rStk
+        | _               -> failwith("TailApply invalide");
       end
-    | Apply :: c ->
+    | Apply :: c    ->
       begin match accu with
         | Closure(c', e') ->
           let _ = Stack.push ( Env(env) ) rStk in
           let _ = Stack.push ( Code(c) ) rStk in
-          zam c' e' aStk rStk
+          let v = Stack.pop aStk in
+                              zam c' accu (v :: e') aStk rStk
         | _ -> failwith("Apply invalide");
       end
     | PushMark :: c ->
