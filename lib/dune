@@ -1,6 +1,6 @@
 (library
  (name visi)
- (modules lambda cam lexer parser)
+ (modules lambda cam zam lexer parser)
  (libraries menhirLib)
  (preprocess
   (pps ppx_deriving.show)))

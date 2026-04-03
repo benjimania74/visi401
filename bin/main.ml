@@ -1,5 +1,6 @@
 open Visi
 open Cam
+open Zam
 
 let repl () =
   let lexbuf = Lexing.from_channel stdin in
@@ -8,9 +9,25 @@ let repl () =
     let result = Parser.main Lexer.read lexbuf in
     let value = runCam (compile result) in
     Printf.printf "%s\n%!" (pp_valeur_option value)
-  done
+  done;;
 
+let replZam () =
+    let lexbuf = Lexing.from_channel stdin in
+  while true do
+    Printf.printf "> %!";
+    let result = Parser.main Lexer.read lexbuf in
+    let value = runZam (compile_zam result) in
+    Printf.printf "%s\n%!" (pp_valeur_option_zam value)
+  done;;
+
+if false then
+   repl ()
+else
+   replZam ()
+
+(*
 let () = repl ()
+*)
 
 (* open Visi *)
 (* open Lambda *)
