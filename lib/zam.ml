@@ -8,15 +8,22 @@ let rec split (t: term) (args: term list) = match t with
 | App(a,b) -> split a (b :: args)
 | _ -> t,args;;
 
-let rec compile_zam (t: term) = match t with
-| Ident n -> [Access n]
-| Lam l -> [ MakeClosure (compileTail (Lam l) )]
-| App (a, b) ->  let f, args = split a [b] in PushMark :: ( List.flatten (List.map compile_zam args) @ (compile_zam f) @ [Apply] ) 
-| _ -> []
+let rec ajout_push_entre (liste: instruction_zam list list): instruction_zam list list =
+  match liste with
+  | [] -> []
+  | x :: xs -> x :: [Push] :: ajout_push_entre xs;; 
+
+let rec compile_zam (t: term): instruction_zam list = match t with
+| Ident n           ->    [Access n]
+| Lam l             ->    [ MakeClosure (compileTail (Lam l) @ [Return] ) ]
+| App (a, b) ->  let f, args = split a [b] in 
+                          PushMark :: ( List.flatten (ajout_push_entre (List.map compile_zam args) ) @ (compile_zam f) @ [Apply] ) 
+| _                 ->    []
 and compileTail (t: term) = match t with
-| Ident n -> [Access n ; Return]
-| Lam l -> MakeGrab :: (compileTail l )
-| App (a, b) ->  let f, args = split a [b] in List.flatten (List.map compile_zam args) @ (compile_zam f) @ [TailApply]
+| Ident n           ->    [Access n]
+| Lam l             ->    MakeGrab :: (compileTail l )
+| App (a, b) ->  let f, args = split a [b] in 
+                          List.flatten (List.map compile_zam args) @ (compile_zam f) @ [TailApply]
 | _ -> [];;
 
 module Int = struct
@@ -42,7 +49,7 @@ let rec pp_valeur_zam = function
 and pp_instrs_zam instrs = String.concat "; " (List.map pp_instr_zam instrs)
 and pp_instr_zam = function 
   | Access n -> string_of_int n
-  | MakeClosure instrs -> "Λ." ^ (pp_instrs_zam instrs)
+  | MakeClosure instrs -> "Λ.( " ^ (pp_instrs_zam instrs) ^ " )"
   | Apply -> "@"
   | Return -> "ret"
   | TailApply -> "t@"
@@ -61,6 +68,8 @@ let pp_valeur_option_zam = pp_option_zam pp_valeur_zam
 type pile = valeur Stack.t;;
 
 let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) (rStk: pile): valeur option =
+  (*let _ = print_string (pp_instrs_zam code)
+  and _ = print_newline() in *)
   match code with
     | [] ->
       if Stack.is_empty aStk then
