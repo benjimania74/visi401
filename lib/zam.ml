@@ -5,13 +5,13 @@ type instruction_zam = Access of int | MakeClosure of instruction_zam list | Tai
 
 
 let rec split (t: term) (args: term list) = match t with
-| App(a,b) -> split a (b :: args)
-| _ -> t,args;;
+| App(a,b)          ->    split a (b :: args)
+| _                 ->    t,args;;
 
 let rec ajout_push_entre (liste: instruction_zam list list): instruction_zam list list =
   match liste with
-  | [] -> []
-  | x :: xs -> x :: [Push] :: ajout_push_entre xs;; 
+  | []              ->    []
+  | x :: xs         ->    x :: [Push] :: ajout_push_entre xs;; 
 
 let rec compile_zam (t: term): instruction_zam list = match t with
 | Ident n           ->    [Access n]
@@ -24,7 +24,7 @@ and compileTail (t: term) = match t with
 | Lam l             ->    MakeGrab :: (compileTail l )
 | App (a, b) ->  let f, args = split a [b] in 
                           List.flatten (List.map compile_zam args) @ (compile_zam f) @ [TailApply]
-| _ -> [];;
+| _                 ->    [];;
 
 module Int = struct
   type t = int
@@ -39,7 +39,7 @@ let rec pp_valeur_zam = function
     | Code instrs -> "⟨" ^ (pp_instrs_zam instrs) ^ "⟩"
     | Env env -> "{" ^ (pp_env_zam env) ^ "}"
     | Closure (instrs,env) -> 
-       "λ." ^ (pp_instrs_zam instrs) ^ " [ " ^ (pp_env_zam env) ^ " ] "
+       "λ.( [" ^ (pp_instrs_zam instrs) ^ "], [ " ^ (pp_env_zam env) ^ " ] )"
     | Value n -> string_of_int n
     | MakeVS -> "S"
     | VS v -> "S " ^ (pp_valeur_zam v)
@@ -71,10 +71,7 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
   (*let _ = print_string (pp_instrs_zam code)
   and _ = print_newline() in *)
   match code with
-    | [] ->
-      if Stack.is_empty aStk then
-        None
-      else Some( Stack.pop aStk )
+    | []                  -> Some( accu )
     | Access n :: c       -> zam c (List.nth env n) env aStk rStk
     | MakeClosure c' :: c -> zam c (Closure(c', env)) env aStk rStk
     | TailApply :: _      ->
@@ -135,7 +132,3 @@ let runZam code =
   let aS = Stack.create() 
   and rS = Stack.create() in
   zam code (Value 0) [] aS rS;;
-
-(*
-(λ.0)(λ.λ.1) => PE; Λ.( MG; MG; 1; ret ); P; Λ.( MG; 0; ret ); @
-*)
