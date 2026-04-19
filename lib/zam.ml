@@ -15,7 +15,7 @@ let rec ajout_push_entre (liste: instruction_zam list list): instruction_zam lis
 
 let rec compile_zam (t: term): instruction_zam list = match t with
 | Ident n           ->    [Access n]
-| Lam l             ->    [ MakeClosure (compileTail (Lam l) @ [Return] ) ]
+| Lam l             ->    [ MakeClosure (compileTail l @ [Return] ) ]
 | App (a, b) ->  let f, args = split a [b] in 
                           PushMark :: ( List.flatten (ajout_push_entre (List.map compile_zam args) ) @ (compile_zam f) @ [Apply] ) 
 | _                 ->    []
@@ -135,3 +135,7 @@ let runZam code =
   let aS = Stack.create() 
   and rS = Stack.create() in
   zam code (Value 0) [] aS rS;;
+
+(*
+(λ.0)(λ.λ.1) => PE; Λ.( MG; MG; 1; ret ); P; Λ.( MG; 0; ret ); @
+*)
