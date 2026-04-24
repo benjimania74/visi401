@@ -1,30 +1,36 @@
 open Lambda;;
 
 
-type instruction_zam = Access of int | MakeClosure of instruction_zam list | TailApply | Apply | Push | PushMark | MakeGrab | Return;;
+type instruction_zam = Access of int | MakeClosure of instruction_zam list | TailApply | Apply | Push | PushMark | MakeGrab | Return | BLOCK | PUSH0;;
 
+let ex = App(App(Ident 0, Ident 1), Ident 3)
 
 let rec split (t: term) (args: term list) = match t with
 | App(a,b)          ->    split a (b :: args)
 | _                 ->    t,args;;
 
-let rec ajout_push_entre (liste: instruction_zam list list): instruction_zam list list =
+
+
+let rec ajout_push_entre (liste: instruction_zam list list): instruction_zam list =
   match liste with
   | []              ->    []
-  | x :: xs         ->    x :: [Push] :: ajout_push_entre xs;; 
+  | x :: xs         ->    x @ (Push :: ajout_push_entre xs);; 
 
 let rec compile_zam (t: term): instruction_zam list = match t with
 | Ident n           ->    [Access n]
 | Lam l             ->    [ MakeClosure (compileTail l @ [Return] ) ]
 | App (a, b) ->  let f, args = split a [b] in 
-                          PushMark :: ( List.flatten (ajout_push_entre (List.map compile_zam args) ) @ (compile_zam f) @ [Apply] ) 
-| _                 ->    []
-and compileTail (t: term) = match t with
+                          PushMark :: ( ajout_push_entre (List.map compile_zam (List.rev args))  @ (compile_zam f) @ [Apply] ) 
+| S                 ->    [BLOCK ; Return]
+| Z                 ->    [PUSH0]
+
+ and compileTail (t: term) = match t with
 | Ident n           ->    [Access n]
 | Lam l             ->    MakeGrab :: (compileTail l )
 | App (a, b) ->  let f, args = split a [b] in 
-                          List.flatten (List.map compile_zam args) @ (compile_zam f) @ [TailApply]
-| _                 ->    [];;
+                          ajout_push_entre (List.map compile_zam (List.rev args)) @ (compile_zam f) @ [TailApply]
+| S                 ->    [BLOCK ; Return]
+| Z                 ->    [PUSH0];;
 
 module Int = struct
   type t = int
@@ -56,6 +62,8 @@ and pp_instr_zam = function
   | PushMark -> "PE"
   | MakeGrab -> "MG"
   | Push -> "P"
+  | BLOCK -> "S"
+  | PUSH0 -> "Z"
 and pp_env_zam env = String.concat ", " (List.map pp_valeur_zam env)
 
 
@@ -68,8 +76,8 @@ let pp_valeur_option_zam = pp_option_zam pp_valeur_zam
 type pile = valeur Stack.t;;
 
 let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) (rStk: pile): valeur option =
-  (*let _ = print_string (pp_instrs_zam code)
-  and _ = print_newline() in *)
+  let _ = print_string ((pp_instrs_zam code) ^ "    |    " ^ (Stack.fold (fun s v -> s ^ "; " ^ pp_valeur_zam v) "" aStk))
+  and _ = print_newline() in
   match code with
     | []                  -> Some( accu )
     | Access n :: c       -> zam c (List.nth env n) env aStk rStk
@@ -81,12 +89,15 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
         | _               -> failwith("TailApply invalide");
       end
     | Apply :: c          -> 
+      let v = Stack.pop aStk in
       begin match accu with
         | Closure(c', e') ->
           let _ = Stack.push ( Env(env) ) rStk in
           let _ = Stack.push ( Code(c) ) rStk in
-          let v = Stack.pop aStk in
                               zam c' accu (v :: e') aStk rStk
+        | MakeVS ->
+          let _ = Stack.push (VS v) aStk in
+                              zam c accu env aStk rStk 
         | _ -> failwith("Apply invalide");
       end
     | Push :: c -> 
@@ -108,7 +119,7 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
             | _            -> failwith("zam : Pas bon MakeGrab 1")
           end
         | _ -> 
-          zam code accu (Stack.pop aStk :: env) aStk rStk
+          zam c accu (aStkVal :: env) aStk rStk
       end
     | Return :: _ ->
       let v = Stack.pop aStk in
@@ -124,9 +135,13 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
       | _ ->
         begin match accu with
         | Closure(c',e') ->    zam c' accu (v :: e') aStk rStk
-        | _              ->    failwith "zam: Pas bon return 2"
+        | _              ->    failwith ("zam: Pas bon return 2 " ^ (pp_valeur_zam accu))
         end
-      end;;
+      end
+    | PUSH0 :: c ->
+      zam c VZ env aStk rStk
+    | BLOCK :: c ->
+      zam c MakeVS env aStk rStk
     
 let runZam code = 
   let aS = Stack.create() 
