@@ -21,7 +21,7 @@ let rec compile_zam (t: term): instruction_zam list = match t with
 | Lam l             ->    [ MakeClosure (compileTail l @ [Return] ) ]
 | App (a, b) ->  let f, args = split a [b] in 
                           PushMark :: ( ajout_push_entre (List.map compile_zam (List.rev args))  @ (compile_zam f) @ [Apply] ) 
-| S                 ->    [BLOCK ; Return]
+| S                 ->    [BLOCK]
 | Z                 ->    [PUSH0]
 
  and compileTail (t: term) = match t with
@@ -29,7 +29,7 @@ let rec compile_zam (t: term): instruction_zam list = match t with
 | Lam l             ->    MakeGrab :: (compileTail l )
 | App (a, b) ->  let f, args = split a [b] in 
                           ajout_push_entre (List.map compile_zam (List.rev args)) @ (compile_zam f) @ [TailApply]
-| S                 ->    [BLOCK ; Return]
+| S                 ->    [BLOCK]
 | Z                 ->    [PUSH0];;
 
 module Int = struct
@@ -82,11 +82,13 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
     | []                  -> Some( accu )
     | Access n :: c       -> zam c (List.nth env n) env aStk rStk
     | MakeClosure c' :: c -> zam c (Closure(c', env)) env aStk rStk
-    | TailApply :: _      ->
+    | TailApply :: c0      ->
+      let v = Stack.pop aStk in
       begin match accu with
       | Closure(c', e')   ->
-                             zam c' accu ((Stack.pop aStk) :: e') aStk rStk
-        | _               -> failwith("TailApply invalide");
+                             zam c' accu (v :: e') aStk rStk
+      | MakeVS ->            zam c0 (VS v) env aStk rStk 
+      | _                 -> failwith("TailApply invalide");
       end
     | Apply :: c          -> 
       let v = Stack.pop aStk in
@@ -94,10 +96,8 @@ let rec zam (code: instruction_zam list) (accu: valeur) (env: env) (aStk: pile) 
         | Closure(c', e') ->
           let _ = Stack.push ( Env(env) ) rStk in
           let _ = Stack.push ( Code(c) ) rStk in
-                              zam c' accu (v :: e') aStk rStk
-        | MakeVS ->
-          let _ = Stack.push (VS v) aStk in
-                              zam c accu env aStk rStk 
+                             zam c' accu (v :: e') aStk rStk
+        | MakeVS ->          zam c (VS v) env aStk rStk 
         | _ -> failwith("Apply invalide");
       end
     | Push :: c -> 
